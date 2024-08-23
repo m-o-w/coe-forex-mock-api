@@ -1,0 +1,41 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  # Azure Function App name
+  functionAppName: 'coefunctionapp01'
+  # Azure Resource Group
+  resourceGroupName: 'coergmain'
+  # Azure subscription
+  azureSubscription: 'azurerm_vimbhati'
+
+steps:
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '3.x'
+    addToPath: true
+
+- script: |
+    python -m pip install --upgrade pip
+    pip install -r requirements.txt
+  displayName: 'Install dependencies'
+
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: '$(System.DefaultWorkingDirectory)'
+    includeRootFolder: false
+    archiveType: 'zip'
+    archiveFile: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
+    replaceExistingArchive: true
+
+- task: AzureCLI@2
+  inputs:
+    azureSubscription: '$(azureSubscription)'
+    scriptType: 'bash'
+    scriptLocation: 'inlineScript'
+    inlineScript: |
+      az functionapp deployment source config-zip -g $(resourceGroupName) -n $(functionAppName) --src $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
+  displayName: 'Deploy Azure Function App'
